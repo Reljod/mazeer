@@ -8,21 +8,19 @@ class Environment:
         self,
         screen: pygame.Surface,
         clock: pygame.time.Clock,
-        acceleration: float = 0.02,
-        initial_velocity: float = 5.0,
-        loop: bool = False,
+        acceleration: float = 9.8,
+        initial_velocity: float = 0,
     ):
         # default values
-        self.dt: float = 0.0
+        self.dt: float = 1.0
         self.screen = screen
         self.clock = clock
         self._acceleration = acceleration
         self._initial_velocity = initial_velocity
-        self._entities = []
+        self._entities: list[Entity] = []
 
         # Flags
         self.running = False
-        self._loop = loop
 
     def run(self):
         self.running = True
@@ -50,10 +48,13 @@ class Environment:
         return self
 
     def _apply_gravity(self, entity: Entity):
-        entity.position.y = entity.position.y + self._initial_velocity
+        entity.position.y = min(
+            entity.position.y + entity.velocity,
+            self.screen.get_height() - entity.size / 2,
+        )
         entity.velocity = entity.velocity + self._acceleration * self.dt
 
-    def _apply_edge_loop(self, entity: Entity):
+    def _apply_bottom_as_ground(self, entity: Entity):
         bottom_edge = entity.position.y + entity.size
-        if bottom_edge > self.screen.get_height():
-            pass
+        if bottom_edge >= self.screen.get_height():
+            entity.velocity = 0
