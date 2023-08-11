@@ -6,11 +6,13 @@ from dataclasses import dataclass, field
 class Player:
     color: str
     height: float
-    position: pygame.Vector2
+    init_position: pygame.Vector2
     init_velocity: pygame.Vector2 = pygame.Vector2(0.0, 0.0)
+    position: pygame.Vector2 = field(init=False)
     velocity: pygame.Vector2 = field(init=False)
 
     def __post_init__(self):
+        self.position = self.init_position.copy()
         self.velocity = self.init_velocity.copy()
 
     def show(self, screen: pygame.Surface):
@@ -20,7 +22,13 @@ class Player:
         self._update_x()
         self._update_y(screen)
 
-    def update_velocity(self, x: float | None = None, y: float | None = None):
+    def set_position(self, x: float | None = None, y: float | None = None):
+        if x is not None:
+            self.position.x = x
+        if y is not None:
+            self.position.y = y
+
+    def set_velocity(self, x: float | None = None, y: float | None = None):
         if x is not None:
             self.velocity.x = x
         if y is not None:
@@ -37,7 +45,9 @@ class Player:
 
 def main():
     # constants
-    G_ACC = 9.81
+    G_ACC = 30.0
+    JUMP_V = 15.0
+    WALK_V = 5.0
 
     # initialize
     pygame.init()
@@ -47,34 +57,50 @@ def main():
     player = Player(
         color="red",
         height=80.0,
-        position=pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2),
+        init_position=pygame.Vector2(50.0, screen.get_height() - 80 / 2),
     )
+    game_instruction = pygame.font.SysFont("Arial", 20, True)
+    reset_text = game_instruction.render("Reset", True, (0, 0, 0))
+    reset_button = reset_text.get_rect(topleft=(10, 10))
 
     # updating variables
     dt = 0
     running = True
+
+    # functions
+    def reset_game():
+        player.set_position(50.0, screen.get_height() - player.height / 2)
+        player.set_velocity(0, 0)
+
     while running:
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
+            match event.type:
+                case pygame.QUIT:
+                    running = False
+                    break
+                case pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1 and reset_button.collidepoint(event.pos):
+                        reset_game()
+                    break
 
         screen.fill("white")
+        screen.blit(reset_text, reset_button)
         player.show(screen)
 
         keys = pygame.key.get_pressed()
         isEdgeBottom = player.position.y + player.height / 2 >= screen.get_height()
         if isEdgeBottom:
-            player.update_velocity(x=0.0, y=0.0)
+            player.set_velocity(x=0.0, y=0.0)
             if keys[pygame.K_w]:
-                player.update_velocity(y=-10.0)
+                player.set_velocity(y=-JUMP_V)
 
         if keys[pygame.K_a]:
-            player.update_velocity(x=-5.0)
+            player.set_velocity(x=-WALK_V)
         if keys[pygame.K_d]:
-            player.update_velocity(x=5.0)
+            player.set_velocity(x=WALK_V)
 
         player.update_position(screen)
-        player.update_velocity(y=player.velocity.y + G_ACC * dt)
+        player.set_velocity(y=player.velocity.y + G_ACC * dt)
 
         display.flip()
         dt = clock.tick(60) / 1000
